@@ -186,7 +186,6 @@ export default function App() {
     }
   }
 
-  // Şıklı Test Modunu Başlatma Fonksiyonu
   async function startQuiz() {
     setLoadingQuestions(true);
     setError("");
@@ -409,99 +408,99 @@ export default function App() {
         </>
       )}
 
-      {/* ŞIKLI TEST EKRANI (BÜYÜTÜLMÜŞ VE SAĞDA DOĞRU/YANLIŞ PANELLİ) */}
+      {/* ŞIKLI TEST EKRANI (DÜZENLENMİŞ: ORTALANMIŞ BAŞLIK VE KİBAR KUTULAR) */}
       {view === "quiz" && currentQuizQ && (
         <section className="section">
           <button
             className="text-button"
-            style={{ marginBottom: "15px", fontSize: "1.1rem" }}
+            style={{ marginBottom: "15px" }}
             onClick={() => setView("home")}
           >
             ← Ana sayfaya dön
           </button>
 
-          <article className="category-card memorize-card" style={{ padding: "30px" }}>
-            {/* ÜST BİLGİ VE SAĞDA DOĞRU/YANLIŞ SAYILARI */}
+          <article className="category-card memorize-card" style={{ padding: "25px" }}>
+            {/* ÜST BİLGİ VE SAĞDA DOĞRU/YANLIŞ KUTULARI */}
             <div style={{
               display: "flex", 
               justifyContent: "space-between", 
               alignItems: "center", 
               borderBottom: "1px solid rgba(255,255,255,0.1)", 
-              paddingBottom: "15px", 
+              paddingBottom: "12px", 
               marginBottom: "20px" 
             }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                <h3 style={{ margin: 0, fontSize: "1.25rem", display: "flex", alignItems: "center", gap: "6px" }}>
                   📝 Şıklı Test Modu
                 </h3>
-                <span style={{ fontSize: "1.1rem", opacity: 0.8 }}>
+                <span style={{ fontSize: "0.95rem", opacity: 0.75 }}>
                   Soru <strong>{quizIndex + 1}</strong> / {quizQuestions.length}
                 </span>
               </div>
 
-              {/* SAĞ TARAFTAKİ BELİRGİN DOĞRU & YANLIŞ PANELLERİ */}
-              <div style={{ display: "flex", gap: "12px" }}>
+              {/* SAĞ TARAFTAKİ KİBAR DOĞRU & YANLIŞ KUTULARI */}
+              <div style={{ display: "flex", gap: "8px" }}>
                 <div style={{
-                  backgroundColor: "rgba(46, 204, 113, 0.2)",
-                  border: "2px solid #2ecc71",
+                  backgroundColor: "rgba(46, 204, 113, 0.15)",
+                  border: "1.5px solid #2ecc71",
                   color: "#2ecc71",
-                  padding: "8px 16px",
-                  borderRadius: "10px",
-                  fontWeight: "bold",
-                  fontSize: "1.2rem",
+                  padding: "6px 12px",
+                  borderRadius: "8px",
+                  fontWeight: "600",
+                  fontSize: "0.95rem",
                   display: "flex",
                   alignItems: "center",
-                  gap: "6px"
+                  gap: "4px"
                 }}>
                   <span>✓</span> Doğru: {score}
                 </div>
 
                 <div style={{
-                  backgroundColor: "rgba(231, 76, 60, 0.2)",
-                  border: "2px solid #e74c3c",
+                  backgroundColor: "rgba(231, 76, 60, 0.15)",
+                  border: "1.5px solid #e74c3c",
                   color: "#e74c3c",
-                  padding: "8px 16px",
-                  borderRadius: "10px",
-                  fontWeight: "bold",
-                  fontSize: "1.2rem",
+                  padding: "6px 12px",
+                  borderRadius: "8px",
+                  fontWeight: "600",
+                  fontSize: "0.95rem",
                   display: "flex",
                   alignItems: "center",
-                  gap: "6px"
+                  gap: "4px"
                 }}>
                   <span>✕</span> Yanlış: {wrongScore}
                 </div>
               </div>
             </div>
 
-            {/* SORU METNİ */}
-            <h2 style={{ fontSize: "1.6rem", lineHeight: "1.4", margin: "20px 0" }}>
+            {/* SORU METNİ - TAM ORTADA */}
+            <h2 style={{ fontSize: "1.4rem", lineHeight: "1.4", margin: "25px 0", textAlign: "center" }}>
               {currentQuizQ.question || currentQuizQ.soru}
             </h2>
 
             {/* ŞIKLAR */}
-            <div className="quiz-options" style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "25px" }}>
+            <div className="quiz-options" style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "20px" }}>
               {currentQuizQ.cleanOptions.map((opt, i) => {
                 let btnStyle = { 
-                  padding: "16px 20px", 
-                  borderRadius: "12px", 
-                  border: "2px solid rgba(255,255,255,0.15)", 
+                  padding: "14px 18px", 
+                  borderRadius: "10px", 
+                  border: "1.5px solid rgba(255,255,255,0.15)", 
                   cursor: "pointer", 
                   textAlign: "left", 
                   width: "100%", 
-                  background: "rgba(255,255,255,0.05)", 
+                  background: "rgba(255,255,255,0.04)", 
                   color: "inherit",
-                  fontSize: "1.15rem",
+                  fontSize: "1.05rem",
                   fontWeight: "500",
                   transition: "all 0.2s ease"
                 };
                 
                 if (selectedOption !== null) {
                   if (opt === currentQuizQ.correctAnswerText) {
-                    btnStyle.background = "#2ecc71"; // Doğru şık canlı yeşil
+                    btnStyle.background = "#2ecc71";
                     btnStyle.color = "#fff";
                     btnStyle.borderColor = "#27ae60";
                   } else if (opt === selectedOption) {
-                    btnStyle.background = "#e74c3c"; // Yanlış seçilen canlı kırmızı
+                    btnStyle.background = "#e74c3c";
                     btnStyle.color = "#fff";
                     btnStyle.borderColor = "#c0392b";
                   }
@@ -513,7 +512,7 @@ export default function App() {
                     style={btnStyle}
                     onClick={() => handleQuizAnswer(opt)}
                   >
-                    <strong style={{ marginRight: "10px" }}>{String.fromCharCode(65 + i)})</strong> {opt}
+                    <strong style={{ marginRight: "8px" }}>{String.fromCharCode(65 + i)})</strong> {opt}
                   </button>
                 );
               })}
@@ -521,23 +520,23 @@ export default function App() {
 
             {/* AÇIKLAMA VE İLERİ BUTONU */}
             {selectedOption !== null && (
-              <div style={{ marginTop: "25px", paddingTop: "15px", borderTop: "1px dashed rgba(255,255,255,0.2)" }}>
+              <div style={{ marginTop: "20px", paddingTop: "12px", borderTop: "1px dashed rgba(255,255,255,0.2)", textAlign: "center" }}>
                 {(currentQuizQ.explanation || currentQuizQ.aciklama) && (
-                  <p style={{ marginBottom: "15px", fontSize: "1.1rem" }}>
+                  <p style={{ marginBottom: "15px", fontSize: "1rem", opacity: 0.9 }}>
                     <strong>Açıklama:</strong> {currentQuizQ.explanation || currentQuizQ.aciklama}
                   </p>
                 )}
                 <button 
                   className="text-button" 
                   onClick={nextQuizQuestion}
-                  style={{ fontSize: "1.1rem", padding: "12px 24px" }}
+                  style={{ fontSize: "1rem", padding: "10px 20px" }}
                 >
                   Sonraki Soru →
                 </button>
               </div>
             )}
 
-            <p className="memorize-category-bottom" style={{ marginTop: "25px", fontSize: "0.95rem", opacity: 0.7 }}>
+            <p className="memorize-category-bottom" style={{ marginTop: "20px", fontSize: "0.9rem", opacity: 0.6, textAlign: "center" }}>
               Kategori: {currentQuizQ.categoryName}
             </p>
           </article>
@@ -548,15 +547,15 @@ export default function App() {
       {view === "quiz-finished" && (
         <section className="section">
           <article className="category-card" style={{ textAlign: "center", padding: "40px" }}>
-            <div className="category-icon" style={{ fontSize: "4rem" }}>🏆</div>
-            <h2 style={{ fontSize: "2rem" }}>Test Tamamlandı!</h2>
-            <p style={{ fontSize: "1.2rem", margin: "15px 0" }}>
+            <div className="category-icon" style={{ fontSize: "3.5rem" }}>🏆</div>
+            <h2 style={{ fontSize: "1.8rem" }}>Test Tamamlandı!</h2>
+            <p style={{ fontSize: "1.1rem", margin: "15px 0" }}>
               Toplam {quizQuestions.length} soruda 
               <strong style={{ color: "#2ecc71" }}> {score} Doğru</strong> ve 
               <strong style={{ color: "#e74c3c" }}> {wrongScore} Yanlış</strong> yaptın.
             </p>
 
-            <div style={{ display: "flex", justifyContent: "center", gap: "15px", marginTop: "20px" }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: "12px", marginTop: "20px" }}>
               <button className="text-button" onClick={startQuiz}>
                 Yeniden Test Çöz
               </button>

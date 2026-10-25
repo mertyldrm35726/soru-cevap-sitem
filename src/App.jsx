@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase";
@@ -65,6 +64,12 @@ export default function App() {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [error, setError] = useState("");
+
+  // Şıklı Test Modu State'leri
+  const [quizQuestions, setQuizQuestions] = useState([]);
+  const [quizIndex, setQuizIndex] = useState(0);
+  const [selectedOption, setSelectedOption] = useState(null);
+  const [score, setScore] = useState(0);
 
   useEffect(() => {
     async function loadCategories() {
@@ -180,6 +185,90 @@ export default function App() {
     }
   }
 
+  // Şıklı Test Modunu Başlatma Fonksiyonu
+  async function startQuiz() {
+    setLoadingQuestions(true);
+    setError("");
+    setQuizIndex(0);
+    setSelectedOption(null);
+    setScore(0);
+
+    try {
+      const allQuestions = [];
+
+      for (const category of categories) {
+        const snapshot = await getDocs(
+          collection(db, "categories", category.documentId, "sorular")
+        );
+
+        snapshot.docs.forEach((doc) => {
+          allQuestions.push({
+            id: doc.id,
+            ...doc.data(),
+            categoryName: category.name,
+          });
+        });
+      }
+
+      if (allQuestions.length === 0) {
+        setError("Test çözmek için henüz soru bulunamadı.");
+        return;
+      }
+
+      // Soruları ve cevap metinlerini hazırla
+      const formattedQuiz = allQuestions.map((q) => {
+        const correctAns = getAnswerText(q);
+        let opts = q.options || [];
+
+        // Eğer veritabanında şıklar yoksa veya boşsa, diğer sorulardan yanlış şıklar üretelim
+        if (opts.length === 0) {
+          const wrongAnswers = allQuestions
+            .filter((item) => getAnswerText(item) !== correctAns)
+            .map((item) => getAnswerText(item));
+          
+          const shuffledWrong = shuffleArray(wrongAnswers).slice(0, 3);
+          opts = shuffleArray([correctAns, ...shuffledWrong]);
+        } else {
+          // Varsa temizleyip dizi yapalım
+          opts = opts.map(o => typeof o === "string" ? o.replace(/^[A-Z][).]\s*/, "") : (o.text || o.label || ""));
+        }
+
+        return {
+          ...q,
+          cleanOptions: shuffleArray(opts),
+          correctAnswerText: correctAns
+        };
+      });
+
+      setQuizQuestions(shuffleArray(formattedQuiz));
+      setView("quiz");
+    } catch (err) {
+      console.error(err);
+      setError("Test soruları yüklenemedi.");
+    } finally {
+      setLoadingQuestions(false);
+    }
+  }
+
+  function handleQuizAnswer(option) {
+    if (selectedOption !== null) return; // Zaten tıklandıysa tekrar tıklanmasın
+
+    setSelectedOption(option);
+    const currentQ = quizQuestions[quizIndex];
+    if (option === currentQ.correctAnswerText) {
+      setScore((prev) => prev + 1);
+    }
+  }
+
+  function nextQuizQuestion() {
+    setSelectedOption(null);
+    if (quizIndex + 1 < quizQuestions.length) {
+      setQuizIndex((prev) => prev + 1);
+    } else {
+      setView("quiz-finished");
+    }
+  }
+
   function nextQuestion() {
     setShowAnswer(false);
 
@@ -196,11 +285,19 @@ export default function App() {
   );
 
   const currentQuestion = memorizeQuestions[currentIndex];
+  const currentQuizQ = quizQuestions[quizIndex];
 
   return (
     <main className={dark ? "app dark" : "app"}>
       <header className="topbar">
-        <button className="brand" onClick={() => setView("home")}>
+        <button
+          className="brand"
+          onClick={() => {
+            setView("home");
+            setShowAnswer(false);
+            setSelectedOption(null);
+          }}
+        >
           <span className="brand-icon">✳</span>
           Ezber<span>le</span>
         </button>
@@ -216,7 +313,6 @@ export default function App() {
       {/* ANA SAYFA */}
       {view === "home" && (
         <>
-          {/* 1. ÖĞRENME ALANI */}
           <section className="welcome">
             <span className="eyebrow">KENDİ ÖĞRENME ALANIN</span>
             <h1>
@@ -228,7 +324,7 @@ export default function App() {
             </p>
           </section>
 
-          {/* 2. İSTATİSTİKLER */}
+          {/* İSTATİSTİKLER */}
           <section className="stats">
             <article className="stat-card">
               <span>📚</span>
@@ -253,28 +349,36 @@ export default function App() {
             </article>
           </section>
 
-          {/* 3. EZBER YAP */}
-          <section className="section">
-            <article className="category-card">
+          {/* MODLAR (EZBER YAP & ŞIKLI TEST) */}
+          <section className="section" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+            <article className="category-card" style={{ textAlign: "center" }}>
               <div className="category-icon">🧠</div>
               <h2>Ezber Yap</h2>
-              <p>
-                Tüm kategorilerden karışık sorular çöz.
-                Cevapları kendin hazır olduğunda göster.
-              </p>
+              <p>Klasik kart düzeni ile kafadan çalış.</p>
               <button
                 className="text-button"
                 onClick={startMemorizing}
                 disabled={loadingQuestions || loadingCategories}
               >
-                {loadingQuestions
-                  ? "Sorular hazırlanıyor..."
-                  : "Ezbere Başla →"}
+                {loadingQuestions ? "Yükleniyor..." : "Ezbere Başla →"}
+              </button>
+            </article>
+
+            <article className="category-card" style={{ textAlign: "center" }}>
+              <div className="category-icon">📝</div>
+              <h2>Şıklı Test Çöz</h2>
+              <p>Karışık sorularla çoktan seçmeli test modu.</p>
+              <button
+                className="text-button"
+                onClick={startQuiz}
+                disabled={loadingQuestions || loadingCategories}
+              >
+                {loadingQuestions ? "Yükleniyor..." : "Test Çöz →"}
               </button>
             </article>
           </section>
 
-          {/* 4. KATEGORİLER EN ALTTA */}
+          {/* KATEGORİLER */}
           <section className="section">
             <h2>Kategorilerin</h2>
             <p>Soruları görmek için bir kategori seç.</p>
@@ -304,6 +408,88 @@ export default function App() {
         </>
       )}
 
+      {/* ŞIKLI TEST EKRANI */}
+      {view === "quiz" && currentQuizQ && (
+        <section className="section">
+          <button
+            className="text-button"
+            onClick={() => setView("home")}
+          >
+            ← Ana sayfaya dön
+          </button>
+
+          <article className="category-card memorize-card">
+            <p>📝 Şıklı Test Modu</p>
+            <p>
+              Soru {quizIndex + 1} / {quizQuestions.length} | Doğru: {score}
+            </p>
+
+            <h2>{currentQuizQ.question || currentQuizQ.soru}</h2>
+
+            <div className="quiz-options" style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "20px" }}>
+              {currentQuizQ.cleanOptions.map((opt, i) => {
+                let btnStyle = { padding: "12px", borderRadius: "8px", border: "1px solid #ccc", cursor: "pointer", textAlign: "left", width: "100%", background: "transparent", color: "inherit" };
+                
+                if (selectedOption !== null) {
+                  if (opt === currentQuizQ.correctAnswerText) {
+                    btnStyle.background = "#2ecc71"; // Doğru şık yeşil
+                    btnStyle.color = "#fff";
+                  } else if (opt === selectedOption) {
+                    btnStyle.background = "#e74c3c"; // Yanlış seçilen kırmızı
+                    btnStyle.color = "#fff";
+                  }
+                }
+
+                return (
+                  <button
+                    key={i}
+                    style={btnStyle}
+                    onClick={() => handleQuizAnswer(opt)}
+                  >
+                    {String.fromCharCode(65 + i)}) {opt}
+                  </button>
+                );
+              })}
+            </div>
+
+            {selectedOption !== null && (
+              <div style={{ marginTop: "20px" }}>
+                {(currentQuizQ.explanation || currentQuizQ.aciklama) && (
+                  <p style={{ marginBottom: "15px" }}>
+                    <strong>Açıklama:</strong> {currentQuizQ.explanation || currentQuizQ.aciklama}
+                  </p>
+                )}
+                <button className="text-button" onClick={nextQuizQuestion}>
+                  Sonraki Soru →
+                </button>
+              </div>
+            )}
+
+            <p className="memorize-category-bottom" style={{ marginTop: "20px" }}>
+              Kategori: {currentQuizQ.categoryName}
+            </p>
+          </article>
+        </section>
+      )}
+
+      {/* TEST BİTTİ EKRANI */}
+      {view === "quiz-finished" && (
+        <section className="section">
+          <article className="category-card" style={{ textAlign: "center" }}>
+            <div className="category-icon">🏆</div>
+            <h2>Test Tamamlandı!</h2>
+            <p>{quizQuestions.length} sorudan {score} doğru yaptın.</p>
+
+            <button className="text-button" onClick={startQuiz}>
+              Yeniden Test Çöz
+            </button>
+            <button className="text-button" onClick={() => setView("home")}>
+              Ana sayfaya dön
+            </button>
+          </article>
+        </section>
+      )}
+
       {/* EZBER EKRANI */}
       {view === "memorize" && currentQuestion && (
         <section className="section">
@@ -330,10 +516,6 @@ export default function App() {
               {currentQuestion.question || currentQuestion.soru || "Soru"}
             </h2>
 
-            <p className="memorize-category">
-              Kategori: {currentQuestion.categoryName}
-            </p>
-
             {currentQuestion.options?.length > 0 && (
               <div className="memorize-options">
                 {currentQuestion.options.map((option, index) => {
@@ -355,11 +537,13 @@ export default function App() {
             {showAnswer && (
               <div className="memorize-answer">
                 <h3>Doğru cevap</h3>
-                <p>{getAnswerText(currentQuestion)}</p>
+                <p className="answer-text">
+                  {getAnswerText(currentQuestion)}
+                </p>
 
                 {(currentQuestion.explanation ||
                   currentQuestion.aciklama) && (
-                  <p>
+                  <p className="answer-explanation">
                     <strong>Açıklama:</strong>{" "}
                     {currentQuestion.explanation ||
                       currentQuestion.aciklama}
@@ -385,6 +569,10 @@ export default function App() {
                 </button>
               )}
             </div>
+
+            <p className="memorize-category-bottom">
+              Kategori: {currentQuestion.categoryName}
+            </p>
           </article>
         </section>
       )}

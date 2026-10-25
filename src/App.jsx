@@ -1,0 +1,486 @@
+
+import { useState, useEffect } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "./firebase";
+import "./App.css";
+
+function shuffleArray(array) {
+  const shuffled = [...array];
+
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  return shuffled;
+}
+
+function getAnswerText(question) {
+  const answer = question.answer ?? question.cevap ?? "";
+  const options = question.options || [];
+
+  if (!answer) return "Cevap belirtilmemiş.";
+
+  const matchedOption = options.find((option, index) => {
+    if (typeof option !== "string") {
+      return (
+        option.key === answer ||
+        option.value === answer ||
+        String.fromCharCode(65 + index) === answer
+      );
+    }
+
+    return (
+      option.startsWith(`${answer})`) ||
+      option.startsWith(`${answer}.`) ||
+      option.startsWith(`${answer} `)
+    );
+  });
+
+  if (typeof matchedOption === "string") {
+    return matchedOption.replace(/^[A-Z][).]\s*/, "");
+  }
+
+  if (matchedOption) {
+    return (
+      matchedOption.text ||
+      matchedOption.label ||
+      matchedOption.value ||
+      answer
+    );
+  }
+
+  return answer;
+}
+
+export default function App() {
+  const [categories, setCategories] = useState([]);
+  const [questions, setQuestions] = useState({});
+  const [memorizeQuestions, setMemorizeQuestions] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [dark, setDark] = useState(true);
+  const [view, setView] = useState("home");
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const snapshot = await getDocs(collection(db, "categories"));
+
+        const loaded = await Promise.all(
+          snapshot.docs.map(async (doc) => {
+            const data = doc.data();
+            const questionSnapshot = await getDocs(
+              collection(db, "categories", doc.id, "sorular")
+            );
+
+            return {
+              id: doc.id,
+              documentId: doc.id,
+              name: data.name || doc.id,
+              icon: data.icon || "📚",
+              order: data.order ?? 999,
+              questionCount: questionSnapshot.size,
+            };
+          })
+        );
+
+        loaded.sort((a, b) => {
+          if (a.order !== b.order) return a.order - b.order;
+          return a.name.localeCompare(b.name, "tr");
+        });
+
+        setCategories(loaded);
+      } catch (err) {
+        console.error(err);
+        setError(
+          "Kategoriler yüklenemedi. Firebase bağlantısını kontrol et."
+        );
+      } finally {
+        setLoadingCategories(false);
+      }
+    }
+
+    loadCategories();
+  }, []);
+
+  async function openCategory(category) {
+    setSelectedCategory(category);
+    setView("category");
+    setLoadingQuestions(true);
+    setError("");
+
+    try {
+      const snapshot = await getDocs(
+        collection(db, "categories", category.documentId, "sorular")
+      );
+
+      const loadedQuestions = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      loadedQuestions.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+
+      setQuestions((previous) => ({
+        ...previous,
+        [category.id]: loadedQuestions,
+      }));
+    } catch (err) {
+      console.error(err);
+      setError(
+        "Sorular yüklenemedi. Firebase Rules ayarlarını kontrol et."
+      );
+    } finally {
+      setLoadingQuestions(false);
+    }
+  }
+
+  async function startMemorizing() {
+    setLoadingQuestions(true);
+    setError("");
+    setShowAnswer(false);
+    setCurrentIndex(0);
+
+    try {
+      const allQuestions = [];
+
+      for (const category of categories) {
+        const snapshot = await getDocs(
+          collection(db, "categories", category.documentId, "sorular")
+        );
+
+        snapshot.docs.forEach((doc) => {
+          allQuestions.push({
+            id: doc.id,
+            ...doc.data(),
+            categoryName: category.name,
+          });
+        });
+      }
+
+      if (allQuestions.length === 0) {
+        setError("Ezber yapmak için henüz soru bulunamadı.");
+        return;
+      }
+
+      setMemorizeQuestions(shuffleArray(allQuestions));
+      setView("memorize");
+    } catch (err) {
+      console.error(err);
+      setError(
+        "Ezber soruları yüklenemedi. Firebase bağlantısını kontrol et."
+      );
+    } finally {
+      setLoadingQuestions(false);
+    }
+  }
+
+  function nextQuestion() {
+    setShowAnswer(false);
+
+    if (currentIndex + 1 < memorizeQuestions.length) {
+      setCurrentIndex((previous) => previous + 1);
+    } else {
+      setView("finished");
+    }
+  }
+
+  const totalQuestions = categories.reduce(
+    (total, category) => total + category.questionCount,
+    0
+  );
+
+  const currentQuestion = memorizeQuestions[currentIndex];
+
+  return (
+    <main className={dark ? "app dark" : "app"}>
+      <header className="topbar">
+        <button className="brand" onClick={() => setView("home")}>
+          <span className="brand-icon">✳</span>
+          Ezber<span>le</span>
+        </button>
+
+        <button
+          className="theme-button"
+          onClick={() => setDark((previous) => !previous)}
+        >
+          {dark ? "☀️ Açık tema" : "🌙 Koyu tema"}
+        </button>
+      </header>
+
+      {/* ANA SAYFA */}
+      {view === "home" && (
+        <>
+          {/* 1. ÖĞRENME ALANI */}
+          <section className="welcome">
+            <span className="eyebrow">KENDİ ÖĞRENME ALANIN</span>
+            <h1>
+              Öğren, tekrar et, <span>hatırla.</span>
+            </h1>
+            <p>
+              Sorularını incele, kendini test et ve öğrendiklerini
+              kalıcı hale getir.
+            </p>
+          </section>
+
+          {/* 2. İSTATİSTİKLER */}
+          <section className="stats">
+            <article className="stat-card">
+              <span>📚</span>
+              <p>Kategoriler</p>
+              <strong>
+                {loadingCategories ? "..." : categories.length}
+              </strong>
+            </article>
+
+            <article className="stat-card">
+              <span>❓</span>
+              <p>Toplam soru</p>
+              <strong>
+                {loadingCategories ? "..." : totalQuestions}
+              </strong>
+            </article>
+
+            <article className="stat-card">
+              <span>🎯</span>
+              <p>Ezberlenen</p>
+              <strong>0</strong>
+            </article>
+          </section>
+
+          {/* 3. EZBER YAP */}
+          <section className="section">
+            <article className="category-card">
+              <div className="category-icon">🧠</div>
+              <h2>Ezber Yap</h2>
+              <p>
+                Tüm kategorilerden karışık sorular çöz.
+                Cevapları kendin hazır olduğunda göster.
+              </p>
+              <button
+                className="text-button"
+                onClick={startMemorizing}
+                disabled={loadingQuestions || loadingCategories}
+              >
+                {loadingQuestions
+                  ? "Sorular hazırlanıyor..."
+                  : "Ezbere Başla →"}
+              </button>
+            </article>
+          </section>
+
+          {/* 4. KATEGORİLER EN ALTTA */}
+          <section className="section">
+            <h2>Kategorilerin</h2>
+            <p>Soruları görmek için bir kategori seç.</p>
+
+            {error && <p role="alert">{error}</p>}
+            {loadingCategories && <p>Kategoriler yükleniyor...</p>}
+
+            <div className="category-grid">
+              {categories.map((category) => (
+                <article
+                  className="category-card"
+                  key={category.documentId}
+                >
+                  <div className="category-icon">{category.icon}</div>
+                  <h3>{category.name}</h3>
+                  <p>{category.questionCount} soru</p>
+                  <button
+                    className="text-button"
+                    onClick={() => openCategory(category)}
+                  >
+                    Soruları gör →
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
+        </>
+      )}
+
+      {/* EZBER EKRANI */}
+      {view === "memorize" && currentQuestion && (
+        <section className="section">
+          <button
+            className="text-button"
+            onClick={() => {
+              setView("home");
+              setShowAnswer(false);
+            }}
+          >
+            ← Ana sayfaya dön
+          </button>
+
+          <article className="category-card memorize-card">
+            <p>🧠 Ezber Yap</p>
+
+            <p>
+              Soru {currentIndex + 1} / {memorizeQuestions.length}
+            </p>
+
+            <div className="category-icon">❓</div>
+
+            <h2>
+              {currentQuestion.question || currentQuestion.soru || "Soru"}
+            </h2>
+
+            <p className="memorize-category">
+              Kategori: {currentQuestion.categoryName}
+            </p>
+
+            {currentQuestion.options?.length > 0 && (
+              <div className="memorize-options">
+                {currentQuestion.options.map((option, index) => {
+                  const letter = String.fromCharCode(65 + index);
+                  const text =
+                    typeof option === "string"
+                      ? option.replace(/^[A-Z][).]\s*/, "")
+                      : option.text || option.label || "";
+
+                  return (
+                    <p key={index}>
+                      {letter}) {text}
+                    </p>
+                  );
+                })}
+              </div>
+            )}
+
+            {showAnswer && (
+              <div className="memorize-answer">
+                <h3>Doğru cevap</h3>
+                <p>{getAnswerText(currentQuestion)}</p>
+
+                {(currentQuestion.explanation ||
+                  currentQuestion.aciklama) && (
+                  <p>
+                    <strong>Açıklama:</strong>{" "}
+                    {currentQuestion.explanation ||
+                      currentQuestion.aciklama}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="memorize-actions">
+              {!showAnswer ? (
+                <button
+                  className="text-button"
+                  onClick={() => setShowAnswer(true)}
+                >
+                  Cevabı Göster
+                </button>
+              ) : (
+                <button
+                  className="text-button"
+                  onClick={nextQuestion}
+                >
+                  İleri →
+                </button>
+              )}
+            </div>
+          </article>
+        </section>
+      )}
+
+      {/* EZBER TAMAMLANDI */}
+      {view === "finished" && (
+        <section className="section">
+          <article className="category-card">
+            <div className="category-icon">🎉</div>
+            <h2>Tüm sorular bitti!</h2>
+            <p>{memorizeQuestions.length} soruyu tamamladın.</p>
+
+            <button className="text-button" onClick={startMemorizing}>
+              Yeniden karıştır ve başla
+            </button>
+
+            <button
+              className="text-button"
+              onClick={() => setView("home")}
+            >
+              Ana sayfaya dön
+            </button>
+          </article>
+        </section>
+      )}
+
+      {/* KATEGORİ SORULARI */}
+      {view === "category" && selectedCategory && (
+        <section className="section">
+          <button
+            className="text-button"
+            onClick={() => {
+              setView("home");
+              setError("");
+            }}
+          >
+            ← Ana sayfaya dön
+          </button>
+
+          <h2>
+            {selectedCategory.icon} {selectedCategory.name}
+          </h2>
+
+          {loadingQuestions ? (
+            <p>Sorular yükleniyor...</p>
+          ) : error ? (
+            <p role="alert">{error}</p>
+          ) : (
+            <>
+              <h3>
+                Sorular ({(questions[selectedCategory.id] || []).length})
+              </h3>
+
+              {(questions[selectedCategory.id] || []).map(
+                (question, index) => (
+                  <article className="category-card" key={question.id}>
+                    <strong>
+                      {index + 1}. {question.question || question.soru}
+                    </strong>
+
+                    {(question.options || []).map(
+                      (option, optionIndex) => {
+                        const letter = String.fromCharCode(65 + optionIndex);
+                        const text =
+                          typeof option === "string"
+                            ? option.replace(/^[A-Z][).]\s*/, "")
+                            : option.text || option.label || "";
+
+                        return (
+                          <p key={optionIndex}>
+                            {letter}) {text}
+                          </p>
+                        );
+                      }
+                    )}
+
+                    <p>
+                      <strong>Doğru cevap:</strong>{" "}
+                      {getAnswerText(question)}
+                    </p>
+
+                    {(question.explanation || question.aciklama) && (
+                      <p>
+                        <strong>Açıklama:</strong>{" "}
+                        {question.explanation || question.aciklama}
+                      </p>
+                    )}
+                  </article>
+                )
+              )}
+            </>
+          )}
+        </section>
+      )}
+
+      <footer>Öğren, tekrar et, hatırla.</footer>
+    </main>
+  );
+}

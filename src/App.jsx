@@ -408,7 +408,7 @@ export default function App() {
         </>
       )}
 
-      {/* ŞIKLI TEST EKRANI (DÜZENLENMİŞ: ORTALANMIŞ BAŞLIK VE KİBAR KUTULAR) */}
+      {/* ŞIKLI TEST EKRANI (KESİN ORTALANMIŞ SAYAC VE DÜZEN) */}
       {view === "quiz" && currentQuizQ && (
         <section className="section">
           <button
@@ -420,55 +420,64 @@ export default function App() {
           </button>
 
           <article className="category-card memorize-card" style={{ padding: "25px" }}>
-            {/* ÜST BİLGİ VE SAĞDA DOĞRU/YANLIŞ KUTULARI */}
+            {/* ÜST BİLGİ: 2 SATIRLI KUSURSUZ YERLEŞİM */}
             <div style={{
-              display: "flex", 
-              justifyContent: "space-between", 
-              alignItems: "center", 
               borderBottom: "1px solid rgba(255,255,255,0.1)", 
-              paddingBottom: "12px", 
+              paddingBottom: "15px", 
               marginBottom: "20px" 
             }}>
-              <div>
+              {/* 1. Satır: Sol Başlık ve Sağ Doğru/Yanlış Kutuları */}
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
                 <h3 style={{ margin: 0, fontSize: "1.25rem", display: "flex", alignItems: "center", gap: "6px" }}>
                   📝 Şıklı Test Modu
                 </h3>
-                <span style={{ fontSize: "0.95rem", opacity: 0.75 }}>
-                  Soru <strong>{quizIndex + 1}</strong> / {quizQuestions.length}
-                </span>
+
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <div style={{
+                    backgroundColor: "rgba(46, 204, 113, 0.15)",
+                    border: "1.5px solid #2ecc71",
+                    color: "#2ecc71",
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    fontWeight: "600",
+                    fontSize: "0.95rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px"
+                  }}>
+                    <span>✓</span> Doğru: {score}
+                  </div>
+
+                  <div style={{
+                    backgroundColor: "rgba(231, 76, 60, 0.15)",
+                    border: "1.5px solid #e74c3c",
+                    color: "#e74c3c",
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    fontWeight: "600",
+                    fontSize: "0.95rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px"
+                  }}>
+                    <span>✕</span> Yanlış: {wrongScore}
+                  </div>
+                </div>
               </div>
 
-              {/* SAĞ TARAFTAKİ KİBAR DOĞRU & YANLIŞ KUTULARI */}
-              <div style={{ display: "flex", gap: "8px" }}>
-                <div style={{
-                  backgroundColor: "rgba(46, 204, 113, 0.15)",
-                  border: "1.5px solid #2ecc71",
-                  color: "#2ecc71",
-                  padding: "6px 12px",
-                  borderRadius: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.95rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px"
-                }}>
-                  <span>✓</span> Doğru: {score}
-                </div>
-
-                <div style={{
-                  backgroundColor: "rgba(231, 76, 60, 0.15)",
-                  border: "1.5px solid #e74c3c",
-                  color: "#e74c3c",
-                  padding: "6px 12px",
-                  borderRadius: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.95rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px"
-                }}>
-                  <span>✕</span> Yanlış: {wrongScore}
-                </div>
+              {/* 2. Satır: Soru Sayacı - TAM ORTADA */}
+              <div style={{
+                textAlign: "center",
+                marginTop: "12px",
+                fontSize: "1.05rem",
+                fontWeight: "600",
+                opacity: 0.9
+              }}>
+                Soru {quizIndex + 1} / {quizQuestions.length}
               </div>
             </div>
 

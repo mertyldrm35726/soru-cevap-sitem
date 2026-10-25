@@ -70,6 +70,7 @@ export default function App() {
   const [quizIndex, setQuizIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState(null);
   const [score, setScore] = useState(0);
+  const [wrongScore, setWrongScore] = useState(0);
 
   useEffect(() => {
     async function loadCategories() {
@@ -192,6 +193,7 @@ export default function App() {
     setQuizIndex(0);
     setSelectedOption(null);
     setScore(0);
+    setWrongScore(0);
 
     try {
       const allQuestions = [];
@@ -215,12 +217,10 @@ export default function App() {
         return;
       }
 
-      // Soruları ve cevap metinlerini hazırla
       const formattedQuiz = allQuestions.map((q) => {
         const correctAns = getAnswerText(q);
         let opts = q.options || [];
 
-        // Eğer veritabanında şıklar yoksa veya boşsa, diğer sorulardan yanlış şıklar üretelim
         if (opts.length === 0) {
           const wrongAnswers = allQuestions
             .filter((item) => getAnswerText(item) !== correctAns)
@@ -229,7 +229,6 @@ export default function App() {
           const shuffledWrong = shuffleArray(wrongAnswers).slice(0, 3);
           opts = shuffleArray([correctAns, ...shuffledWrong]);
         } else {
-          // Varsa temizleyip dizi yapalım
           opts = opts.map(o => typeof o === "string" ? o.replace(/^[A-Z][).]\s*/, "") : (o.text || o.label || ""));
         }
 
@@ -251,12 +250,14 @@ export default function App() {
   }
 
   function handleQuizAnswer(option) {
-    if (selectedOption !== null) return; // Zaten tıklandıysa tekrar tıklanmasın
+    if (selectedOption !== null) return;
 
     setSelectedOption(option);
     const currentQ = quizQuestions[quizIndex];
     if (option === currentQ.correctAnswerText) {
       setScore((prev) => prev + 1);
+    } else {
+      setWrongScore((prev) => prev + 1);
     }
   }
 
@@ -408,35 +409,101 @@ export default function App() {
         </>
       )}
 
-      {/* ŞIKLI TEST EKRANI */}
+      {/* ŞIKLI TEST EKRANI (BÜYÜTÜLMÜŞ VE SAĞDA DOĞRU/YANLIŞ PANELLİ) */}
       {view === "quiz" && currentQuizQ && (
         <section className="section">
           <button
             className="text-button"
+            style={{ marginBottom: "15px", fontSize: "1.1rem" }}
             onClick={() => setView("home")}
           >
             ← Ana sayfaya dön
           </button>
 
-          <article className="category-card memorize-card">
-            <p>📝 Şıklı Test Modu</p>
-            <p>
-              Soru {quizIndex + 1} / {quizQuestions.length} | Doğru: {score}
-            </p>
+          <article className="category-card memorize-card" style={{ padding: "30px" }}>
+            {/* ÜST BİLGİ VE SAĞDA DOĞRU/YANLIŞ SAYILARI */}
+            <div style={{
+              display: "flex", 
+              justifyContent: "space-between", 
+              alignItems: "center", 
+              borderBottom: "1px solid rgba(255,255,255,0.1)", 
+              paddingBottom: "15px", 
+              marginBottom: "20px" 
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                  📝 Şıklı Test Modu
+                </h3>
+                <span style={{ fontSize: "1.1rem", opacity: 0.8 }}>
+                  Soru <strong>{quizIndex + 1}</strong> / {quizQuestions.length}
+                </span>
+              </div>
 
-            <h2>{currentQuizQ.question || currentQuizQ.soru}</h2>
+              {/* SAĞ TARAFTAKİ BELİRGİN DOĞRU & YANLIŞ PANELLERİ */}
+              <div style={{ display: "flex", gap: "12px" }}>
+                <div style={{
+                  backgroundColor: "rgba(46, 204, 113, 0.2)",
+                  border: "2px solid #2ecc71",
+                  color: "#2ecc71",
+                  padding: "8px 16px",
+                  borderRadius: "10px",
+                  fontWeight: "bold",
+                  fontSize: "1.2rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}>
+                  <span>✓</span> Doğru: {score}
+                </div>
 
-            <div className="quiz-options" style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "20px" }}>
+                <div style={{
+                  backgroundColor: "rgba(231, 76, 60, 0.2)",
+                  border: "2px solid #e74c3c",
+                  color: "#e74c3c",
+                  padding: "8px 16px",
+                  borderRadius: "10px",
+                  fontWeight: "bold",
+                  fontSize: "1.2rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}>
+                  <span>✕</span> Yanlış: {wrongScore}
+                </div>
+              </div>
+            </div>
+
+            {/* SORU METNİ */}
+            <h2 style={{ fontSize: "1.6rem", lineHeight: "1.4", margin: "20px 0" }}>
+              {currentQuizQ.question || currentQuizQ.soru}
+            </h2>
+
+            {/* ŞIKLAR */}
+            <div className="quiz-options" style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "25px" }}>
               {currentQuizQ.cleanOptions.map((opt, i) => {
-                let btnStyle = { padding: "12px", borderRadius: "8px", border: "1px solid #ccc", cursor: "pointer", textAlign: "left", width: "100%", background: "transparent", color: "inherit" };
+                let btnStyle = { 
+                  padding: "16px 20px", 
+                  borderRadius: "12px", 
+                  border: "2px solid rgba(255,255,255,0.15)", 
+                  cursor: "pointer", 
+                  textAlign: "left", 
+                  width: "100%", 
+                  background: "rgba(255,255,255,0.05)", 
+                  color: "inherit",
+                  fontSize: "1.15rem",
+                  fontWeight: "500",
+                  transition: "all 0.2s ease"
+                };
                 
                 if (selectedOption !== null) {
                   if (opt === currentQuizQ.correctAnswerText) {
-                    btnStyle.background = "#2ecc71"; // Doğru şık yeşil
+                    btnStyle.background = "#2ecc71"; // Doğru şık canlı yeşil
                     btnStyle.color = "#fff";
+                    btnStyle.borderColor = "#27ae60";
                   } else if (opt === selectedOption) {
-                    btnStyle.background = "#e74c3c"; // Yanlış seçilen kırmızı
+                    btnStyle.background = "#e74c3c"; // Yanlış seçilen canlı kırmızı
                     btnStyle.color = "#fff";
+                    btnStyle.borderColor = "#c0392b";
                   }
                 }
 
@@ -446,26 +513,31 @@ export default function App() {
                     style={btnStyle}
                     onClick={() => handleQuizAnswer(opt)}
                   >
-                    {String.fromCharCode(65 + i)}) {opt}
+                    <strong style={{ marginRight: "10px" }}>{String.fromCharCode(65 + i)})</strong> {opt}
                   </button>
                 );
               })}
             </div>
 
+            {/* AÇIKLAMA VE İLERİ BUTONU */}
             {selectedOption !== null && (
-              <div style={{ marginTop: "20px" }}>
+              <div style={{ marginTop: "25px", paddingTop: "15px", borderTop: "1px dashed rgba(255,255,255,0.2)" }}>
                 {(currentQuizQ.explanation || currentQuizQ.aciklama) && (
-                  <p style={{ marginBottom: "15px" }}>
+                  <p style={{ marginBottom: "15px", fontSize: "1.1rem" }}>
                     <strong>Açıklama:</strong> {currentQuizQ.explanation || currentQuizQ.aciklama}
                   </p>
                 )}
-                <button className="text-button" onClick={nextQuizQuestion}>
+                <button 
+                  className="text-button" 
+                  onClick={nextQuizQuestion}
+                  style={{ fontSize: "1.1rem", padding: "12px 24px" }}
+                >
                   Sonraki Soru →
                 </button>
               </div>
             )}
 
-            <p className="memorize-category-bottom" style={{ marginTop: "20px" }}>
+            <p className="memorize-category-bottom" style={{ marginTop: "25px", fontSize: "0.95rem", opacity: 0.7 }}>
               Kategori: {currentQuizQ.categoryName}
             </p>
           </article>
@@ -475,17 +547,23 @@ export default function App() {
       {/* TEST BİTTİ EKRANI */}
       {view === "quiz-finished" && (
         <section className="section">
-          <article className="category-card" style={{ textAlign: "center" }}>
-            <div className="category-icon">🏆</div>
-            <h2>Test Tamamlandı!</h2>
-            <p>{quizQuestions.length} sorudan {score} doğru yaptın.</p>
+          <article className="category-card" style={{ textAlign: "center", padding: "40px" }}>
+            <div className="category-icon" style={{ fontSize: "4rem" }}>🏆</div>
+            <h2 style={{ fontSize: "2rem" }}>Test Tamamlandı!</h2>
+            <p style={{ fontSize: "1.2rem", margin: "15px 0" }}>
+              Toplam {quizQuestions.length} soruda 
+              <strong style={{ color: "#2ecc71" }}> {score} Doğru</strong> ve 
+              <strong style={{ color: "#e74c3c" }}> {wrongScore} Yanlış</strong> yaptın.
+            </p>
 
-            <button className="text-button" onClick={startQuiz}>
-              Yeniden Test Çöz
-            </button>
-            <button className="text-button" onClick={() => setView("home")}>
-              Ana sayfaya dön
-            </button>
+            <div style={{ display: "flex", justifyContent: "center", gap: "15px", marginTop: "20px" }}>
+              <button className="text-button" onClick={startQuiz}>
+                Yeniden Test Çöz
+              </button>
+              <button className="text-button" onClick={() => setView("home")}>
+                Ana sayfaya dön
+              </button>
+            </div>
           </article>
         </section>
       )}
